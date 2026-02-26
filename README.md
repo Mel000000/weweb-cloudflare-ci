@@ -1,13 +1,13 @@
 # weweb-cloudflare-ci
 ⭐ First open-source CI/CD template for WeWeb + Cloudflare Pages
 
-Production-ready automated deployment pipeline using GitHub Actions and Cloudflare Workers with commit traceability and automatic build fixes.
 ![Release](https://img.shields.io/github/v/release/Mel000000/weweb-cloudflare-ci)
 [![CI](https://github.com/Mel000000/weweb-cloudflare-ci/actions/workflows/deploy.yml/badge.svg)](https://github.com/Mel000000/weweb-cloudflare-ci/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Cloudflare Pages](https://img.shields.io/badge/deployed%20to-Cloudflare%20Pages-orange)
 [![GitHub stars](https://img.shields.io/github/stars/Mel000000/weweb-cloudflare-ci?style=social)](https://github.com/Mel000000/weweb-cloudflare-ci/stargazers)
 
+Production-ready automated deployment pipeline using GitHub Actions and Cloudflare Workers with commit traceability and automatic build fixes.
 This workflow ensures fully automated deployment of WeWeb projects with commit traceability and Vite build overrides.
 
 ---
