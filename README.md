@@ -1,11 +1,12 @@
-# weweb-cloudflare-pages-ci
+# weweb-cloudflare-ci
+⭐ First open-source CI/CD template for WeWeb + Cloudflare Pages
 
+Production-ready automated deployment pipeline using GitHub Actions and Cloudflare Workers with commit traceability and automatic build fixes.
 [![CI](https://github.com/Mel000000/weweb-cloudflare-ci/actions/workflows/deploy.yml/badge.svg)](https://github.com/Mel000000/weweb-cloudflare-ci/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Cloudflare Pages](https://img.shields.io/badge/deployed%20to-Cloudflare%20Pages-orange)
 [![GitHub stars](https://img.shields.io/github/stars/Mel000000/weweb-cloudflare-ci?style=social)](https://github.com/Mel000000/weweb-cloudflare-ci/stargazers)
 
-**Automated CI/CD pipeline for deploying WeWeb projects to Cloudflare Pages**  
 This workflow ensures fully automated deployment of WeWeb projects with commit traceability and Vite build overrides.
 
 ---
@@ -13,11 +14,13 @@ This workflow ensures fully automated deployment of WeWeb projects with commit t
 ## Table of Contents
 
 - [Overview](#overview)
+- [Why This Template Matters](#why-this-template-matters)
+- [Who This Is For](#who-this-is-for)
 - [Why This Project Exists](#why-this-project-exists)
 - [Usage Example](#usage-example)
 - [Architecture](#architecture)
 - [Features](#features)
-- [Quick Start](#quick-start-for-the-impatient)
+- [Quick Start](#quick-start)
 - [Prerequisites Checklist](#prerequisites-checklist)
 - [Setup Secrets](#setup-secrets)
 - [Configure WeWeb](#configure-weweb)
@@ -58,6 +61,27 @@ This repository provides a **hands-off, fully automated deployment workflow** fo
 
 The workflow clones the latest WeWeb export, applies necessary overrides, builds the project, and deploys it to Cloudflare Pages with accurate commit traceability.
 
+---
+## Why This Template Matters
+
+WeWeb currently has no official CI/CD templates for Cloudflare Pages.
+
+This repository provides a production-tested reference architecture for reliable automated deployments.
+
+---
+## Who This Is For
+
+This project is ideal for:
+
+- Developers deploying WeWeb to Cloudflare Pages
+- Teams needing automated WeWeb CI/CD
+- Projects requiring reproducible WeWeb builds
+
+This project may NOT be ideal if:
+
+- You deploy manually from WeWeb
+- You use Netlify or Vercel instead of Cloudflare
+- You don't need CI automation
 ---
 ## Why This Project Exists
 
@@ -122,14 +146,24 @@ graph TD
 
 ---
 
-## Quick Start (for the impatient)
+## Quick Start
 
-1. Fork/clone this repo (your workflow repo)
-2. Create a separate repo for your WeWeb project
-3. Set up GitHub secrets in both repos
-4. Deploy the Cloudflare Worker with `wrangler deploy`
-5. Configure WeWeb to POST to your worker URL
-6. Push a change in WeWeb to trigger deployment
+1. Fork repo
+2. Add these secrets:
+
+``CLOUDFLARE_API_TOKEN``
+``CLOUDFLARE_ACCOUNT_ID``
+``WORKFLOW_PAT``
+``WORKER_PAT``
+``NPM_TOKEN``
+
+3. Deploy worker:
+```bash
+wrangler deploy
+```
+4. Add Worker URL to WeWeb export hook
+
+Done — WeWeb exports will now deploy automatically.
 
 ---
 ## Getting Started
@@ -144,6 +178,20 @@ Before setting up this workflow, ensure you have:
 - [ ] Wrangler CLI installed
 - [ ] GitHub Personal Access Token (classic) for Worker trigger = `WORKER_PAT`
 - [ ] GitHub Personal Access Token (classic) for npm authentication = `NPM_TOKEN`
+
+### Required Edits
+
+You must modify:
+
+deploy.yml:
+
+- YOUR_ORG/YOUR_REPO
+- YOUR_PROJECT_NAME
+
+Cloudflare Worker:
+
+- YOUR_GITHUB_USERNAME_OR_ORG
+- YOUR_REPO_NAME
 
 ---
 ### Setup Secrets
