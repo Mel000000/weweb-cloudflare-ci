@@ -1,0 +1,145 @@
+name: WeWeb Production Deploy
+
+on:
+  repository_dispatch:
+    types: [from-cloudflare]
+  workflow_dispatch: # optional: allows manual trigger for testing
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout this repo
+      - name: Checkout workflow repo
+        uses: actions/checkout@v4
+
+      # Step 2: Fetch WeWeb source files into a folder named source-content (🔴 adjust directory as needed)
+      - name: Clone WeWeb repo
+        run: |
+          git clone --branch main https://${{ secrets.GITH_TOKEN }}@github.com/YOUR_ORG/YOUR_REPO.git source-content
+      
+      # Step 3: Extract latest commit info from WeWeb repo and set as environment variables
+      - name: Get WeWeb commit info
+        run: |
+          cd source-content
+          # Latest commit hash
+          GIT_HASH=$(git rev-parse --short HEAD)
+          # Latest commit message (single line)
+          GIT_MSG=$(git log -1 --pretty=%B | tr '\n' ' ')
+          echo "WEWEB_COMMIT=$GIT_HASH" >> $GITHUB_ENV
+          echo "WEWEB_MESSAGE=$GIT_MSG" >> $GITHUB_ENV
+
+      - name: Show Trigger Info
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "::notice::Triggered by Cloudflare Worker"
+          echo "Source: ${{ github.event.client_payload.source }}"
+          echo "Time: ${{ github.event.client_payload.timestamp }}"
+
+      # Step 4: create main.js with Buffer polyfill if it doesn't exist, or prepend the polyfill if it does
+      - name: Apply main.js templates
+        run: |
+          # Patch main.js: if exists, prepend Buffer polyfill; if not, create
+          MAIN_FILE=source-content/src/main.js
+          if [ -f "$MAIN_FILE" ]; then
+            # Prepend the Buffer polyfill
+            cat .github/templates/main.js "$MAIN_FILE" > "$MAIN_FILE.tmp" && mv "$MAIN_FILE.tmp" "$MAIN_FILE"
+          else
+            # Create new main.js with Buffer polyfill
+            cp .github/templates/main.js "$MAIN_FILE"
+          fi
+
+      # Step 5: Setup Node and install dependencies
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          
+      - name: Configure npm auth
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      
+      - name: Install dependencies
+        run: |
+          set -e
+          cd source-content
+          npm install
+
+      - name: Install missing Vite deps
+        run: |
+          cd source-content
+          npm install rollup-plugin-node-polyfills --save-dev
+      
+      # Step 6: Copy Vite override config into project
+      - name: Copy Vite override into project
+        run: |
+          cp .github/wrappers/vite.override.js source-content/vite.override.js
+      
+      # Step 7: Build project
+      - name: Build project
+        run: |
+          echo "::notice:: Building project..."
+          cd source-content
+          npx vite build --config vite.override.js
+      
+      # Step 8: Inject WeWeb commit info into build (optional for site visibility)
+      - name: Inject WeWeb commit info into dist
+        run: |
+          echo "window.WEWEB_COMMIT='$WEWEB_COMMIT'; window.WEWEB_MESSAGE='$WEWEB_MESSAGE';" > source-content/dist/git-info.js
+      
+      # Step 9: Configure git and commit with WeWeb message
+      - name: Configure git and commit
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git config --local advice.addEmbeddedRepo false
+          git add .
+          git commit -m "$WEWEB_MESSAGE" || echo "No changes to commit"
+
+      # Step 10: Deploy to Cloudflare Pages (🔴 adjust projectName)
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: YOUR_PROJECT_NAME
+          directory: source-content/dist
+          wranglerVersion: 2
+
+      # Deployment success message
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: weweb-trigger (Cloudflare Worker)" >> $GITHUB_STEP_SUMMARY
+          echo "- WeWeb Commit: $WEWEB_COMMIT" >> $GITHUB_STEP_SUMMARY
+          echo "- WeWeb Message: $WEWEB_MESSAGE" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: Success ✅" >> $GITHUB_STEP_SUMMARY
+      
+      # Deployment info
+      - name: Deployment Info
+        run: |
+          echo "::notice:: Deploying WeWeb commit $WEWEB_COMMIT"
+          echo "::group::Deployment Details"
+          echo "Commit: $WEWEB_COMMIT"
+          echo "Message: $WEWEB_MESSAGE"
+          echo "::endgroup::"
+      
+      # Error handling      
+      - name: Handle Deployment Errors
+        if: failure()
+        run: |
+          echo "::error::❌ Deployment failed"
+          echo "::group::Error Details"
+          echo "Commit: $WEWEB_COMMIT"
+          echo "Message: $WEWEB_MESSAGE"
+          echo "::endgroup::"
+
+          echo "## Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- WeWeb Commit: $WEWEB_COMMIT" >> $GITHUB_STEP_SUMMARY
+          echo "- WeWeb Message: $WEWEB_MESSAGE" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: Failed ❌" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,8 @@
+{
+	"name": "weweb-trigger",
+	"main": "src/index.js",
+	"compatibility_date": "2026-01-18",
+	"observability": {
+		"enabled": true,
+	},
+}

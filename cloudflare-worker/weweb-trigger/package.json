@@ -1,0 +1,22 @@
+{
+	"name": "weweb-trigger",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.59.2"
+	},
+	"dependencies": {
+		"@octokit/rest": "^22.0.1",
+		"buffer": "npm:Buffer@^0.0.0",
+		"Buffer": "^0.0.0",
+		"child_process": "^1.0.2"
+	}
+}
