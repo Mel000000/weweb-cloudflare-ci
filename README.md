@@ -314,7 +314,7 @@ jobs:
       # Step 2: Fetch WeWeb source files into a folder named source-content (🔴 adjust directory as needed)
       - name: Clone WeWeb repo
         run: |
-          git clone --branch main https://${{ secrets.GITH_TOKEN }}@github.com/YOUR_ORG/YOUR_REPO.git source-content
+          git clone --branch main https://${{ secrets.WORKFLOW_PAT}}@github.com/YOUR_ORG/YOUR_REPO.git source-content
       
       # Step 3: Extract latest commit info from WeWeb repo and set as environment variables
       - name: Get WeWeb commit info
