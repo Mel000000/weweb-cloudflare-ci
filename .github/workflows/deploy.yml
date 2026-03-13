@@ -17,7 +17,7 @@ jobs:
       # Step 2: Fetch WeWeb source files into a folder named source-content (🔴 adjust directory as needed)
       - name: Clone WeWeb repo
         run: |
-          git clone --branch main https://${{ secrets.WORKFLOW_PAT }}@github.com/YOUR_ORG/YOUR_REPO.git source-content
+          git clone --branch main https://${{ secrets.WORKFLOW_PAT}}@github.com/YOUR_ORG/YOUR_REPO.git source-content
       
       # Step 3: Extract latest commit info from WeWeb repo and set as environment variables
       - name: Get WeWeb commit info
@@ -37,20 +37,15 @@ jobs:
           echo "Source: ${{ github.event.client_payload.source }}"
           echo "Time: ${{ github.event.client_payload.timestamp }}"
 
-      # Step 4: create main.js with Buffer polyfill if it doesn't exist, or prepend the polyfill if it does
-      - name: Apply main.js templates
-        run: |
-          # Patch main.js: if exists, prepend Buffer polyfill; if not, create
-          MAIN_FILE=source-content/src/main.js
-          if [ -f "$MAIN_FILE" ]; then
-            # Prepend the Buffer polyfill
-            cat .github/templates/main.js "$MAIN_FILE" > "$MAIN_FILE.tmp" && mv "$MAIN_FILE.tmp" "$MAIN_FILE"
-          else
-            # Create new main.js with Buffer polyfill
-            cp .github/templates/main.js "$MAIN_FILE"
-          fi
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: source-content/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('source-content/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      # Step 5: Setup Node and install dependencies
+      # Step 4: Setup Node and install dependencies
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -71,24 +66,20 @@ jobs:
           cd source-content
           npm install rollup-plugin-node-polyfills --save-dev
       
-      # Step 6: Copy Vite override config into project
-      - name: Copy Vite override into project
-        run: |
-          cp .github/wrappers/vite.override.js source-content/vite.override.js
-      
-      # Step 7: Build project
+      # Step 5: Build project
       - name: Build project
         run: |
           echo "::notice:: Building project..."
           cd source-content
-          npx vite build --config vite.override.js
+          npm run build
+          echo "::notice:: Build completed successfully"
       
-      # Step 8: Inject WeWeb commit info into build (optional for site visibility)
+      # Step 6: Inject WeWeb commit info into build (optional for site visibility)
       - name: Inject WeWeb commit info into dist
         run: |
           echo "window.WEWEB_COMMIT='$WEWEB_COMMIT'; window.WEWEB_MESSAGE='$WEWEB_MESSAGE';" > source-content/dist/git-info.js
       
-      # Step 9: Configure git and commit with WeWeb message
+      # Step 7: Configure git and commit with WeWeb message
       - name: Configure git and commit
         run: |
           git config --local user.email "action@github.com"
@@ -97,7 +88,7 @@ jobs:
           git add .
           git commit -m "$WEWEB_MESSAGE" || echo "No changes to commit"
 
-      # Step 10: Deploy to Cloudflare Pages (🔴 adjust projectName)
+      # Step 8: Deploy to Cloudflare Pages (🔴 adjust projectName)
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
