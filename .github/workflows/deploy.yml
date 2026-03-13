@@ -60,11 +60,6 @@ jobs:
           set -e
           cd source-content
           npm install
-
-      - name: Install missing Vite deps
-        run: |
-          cd source-content
-          npm install rollup-plugin-node-polyfills --save-dev
       
       # Step 5: Build project
       - name: Build project
