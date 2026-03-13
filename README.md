@@ -56,18 +56,18 @@ This repository provides a **hands-off, fully automated deployment workflow** fo
 
 
 ### Key challenges addressed:
-- WeWeb overwrites configuration files on export, which can break builds.  
-- Keeping track of original WeWeb commit messages during deployment.  
-- Automatically applying polyfills and Vite overrides to ensure builds succeed.  
+- Full deploy in ~54 seconds with dependency caching  
+- Keeping track of original WeWeb commit messages during deployment.
+- Making the deploying process hands off
 
-The workflow clones the latest WeWeb export, applies necessary overrides, builds the project, and deploys it to Cloudflare Pages with accurate commit traceability.
+The workflow clones the latest WeWeb export and deploys it to Cloudflare Pages with accurate commit traceability.
 
 ---
 ## Why This Template Matters
 
 WeWeb currently has no official CI/CD templates for Cloudflare Pages.
 
-This repository provides a production-tested reference architecture for reliable automated deployments.
+This repository provides a production-tested reference architecture for reliable automated deployments and can be customized to no end.
 
 ---
 ## Who This Is For
@@ -81,16 +81,14 @@ This project is ideal for:
 This project may NOT be ideal if:
 
 - You deploy manually from WeWeb
-- You use Netlify or Vercel instead of Cloudflare
 - You don't need CI automation
 ---
 ## Why This Project Exists
 
-WeWeb exports often overwrite configuration files, making standard CI/CD pipelines unreliable.
+It provides developers with the option of full customization in their build process.
 
 This project provides a robust deployment architecture that:
 
-- Re-applies required configuration automatically
 - Preserves original commit messages
 - Works with private WeWeb repositories
 - Requires zero manual intervention
@@ -140,8 +138,7 @@ graph TD
 ## Features
 
 - **Automated CI/CD:** Triggered by WeWeb exports, no manual intervention.  
-- **Commit Traceability:** Keeps original WeWeb commit hash and message in deploy repo.  
-- **Polyfills & Vite Overrides:** Ensures builds succeed even if WeWeb overwrites configs.  
+- **Commit Traceability:** Keeps original WeWeb commit hash and message in deploy repo.    
 - **Cloudflare Pages Deployment:** Seamlessly deploys static assets from Vite build.  
 - **Optional Commit Info Injection:** Display WeWeb commit info on the deployed site for visibility.  
 
@@ -334,21 +331,15 @@ jobs:
           echo "Source: ${{ github.event.client_payload.source }}"
           echo "Time: ${{ github.event.client_payload.timestamp }}"
 
-      # Step 4: create main.js with Buffer polyfill if it doesn't exist, or prepend the polyfill if it does
-      - name: Apply main.js templates
-        run: |
-          # Patch main.js: if exists, prepend Buffer polyfill; if not, create
-          MAIN_FILE=source-content/src/main.js
-          if [ -f "$MAIN_FILE" ]; then
-            # Prepend the Buffer polyfill
-            cat .github/templates/main.js "$MAIN_FILE" > "$MAIN_FILE.tmp" && mv "$MAIN_FILE.tmp" "$MAIN_FILE"
-          else
-            # Create new main.js with Buffer polyfill
-            cp .github/templates/main.js "$MAIN_FILE"
-          fi
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: source-content/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('source-content/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-
-      # Step 5: Setup Node and install dependencies
+      # Step 4: Setup Node and install dependencies
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -369,24 +360,20 @@ jobs:
           cd source-content
           npm install rollup-plugin-node-polyfills --save-dev
       
-      # Step 6: Copy Vite override config into project
-      - name: Copy Vite override into project
-        run: |
-          cp .github/wrappers/vite.override.js source-content/vite.override.js
-      
-      # Step 7: Build project
+      # Step 5: Build project
       - name: Build project
         run: |
           echo "::notice:: Building project..."
           cd source-content
-          npx vite build --config vite.override.js
+          npm run build
+          echo "::notice:: Build completed successfully"
       
-      # Step 8: Inject WeWeb commit info into build (optional for site visibility)
+      # Step 6: Inject WeWeb commit info into build (optional for site visibility)
       - name: Inject WeWeb commit info into dist
         run: |
           echo "window.WEWEB_COMMIT='$WEWEB_COMMIT'; window.WEWEB_MESSAGE='$WEWEB_MESSAGE';" > source-content/dist/git-info.js
       
-      # Step 9: Configure git and commit with WeWeb message
+      # Step 7: Configure git and commit with WeWeb message
       - name: Configure git and commit
         run: |
           git config --local user.email "action@github.com"
@@ -395,7 +382,7 @@ jobs:
           git add .
           git commit -m "$WEWEB_MESSAGE" || echo "No changes to commit"
 
-      # Step 10: Deploy to Cloudflare Pages (🔴 adjust projectName)
+      # Step 8: Deploy to Cloudflare Pages (🔴 adjust projectName)
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
@@ -450,57 +437,20 @@ The workflow clones the latest WeWeb repo into a temporary folder (``source-cont
 ---
 ### 4. Extract WeWeb commit info
 The workflow reads the latest commit hash and message from the cloned repo and stores it as environment variables for use in the deploy commit and optional site display.
-
----
-### 5. Apply file templates and polyfills
-- ``main.js`` polyfill prepended or created if missing; can be found in ``/.github/templates/main.js``:
-  ```javascript
-  import { Buffer } from 'buffer'
-  window.Buffer = Buffer
-  ```
-- Vite configuration override (``vite.override.js``) applied to ensure builds succeed; can be found in ``/.github/wrappers/vite.override.js``:
-  ```javascript
-  import { defineConfig, mergeConfig } from 'vite'
-  import baseConfig from './vite.config.js'
-  
-  export default defineConfig((env) => {
-    const resolvedBase =
-      typeof baseConfig === 'function'
-        ? baseConfig(env)
-        : baseConfig
-  
-    return mergeConfig(resolvedBase, {
-      define: {
-        global: {},
-        'process.env': {}
-      },
-  
-      resolve: {
-        alias: {
-          buffer: 'buffer'
-        }
-      },
-  
-      optimizeDeps: {
-        include: ['buffer', 'process']
-      }
-    })
-  })
-  ```
   
 ---
-### 6. Install dependencies
+### 5. Install or cache dependencies
 - Node.js (v18) installed
 - Dependencies installed via ``npm install``
 - Authenticated using ``NPM_TOKEN``
 - Additional Vite-specific packages installed as needed
   
 ---
-### 7. Build the project using ``vite.override.js``
-Build the production-ready static assets using Vite with the override config.
+### 6. Build the project using ``npm run build``
+Build the production-ready static assets.
 
 ---
-### 8. Inject WeWeb commit info into dist/git-info.js (optional)
+### 7. Inject WeWeb commit info into dist/git-info.js (optional)
 The workflow can generate dist/git-info.js containing:
 ```javascript
 window.WEWEB_COMMIT = "commit_hash";
@@ -509,11 +459,11 @@ window.WEWEB_MESSAGE = "commit_message";
 This allows site-level display of WeWeb commit info.
 
 ---
-### 9. Commit changes in deploy repo using original WeWeb commit message
+### 8. Commit changes in deploy repo using original WeWeb commit message
 The workflow commits the newly built assets with the original WeWeb commit message for traceability.
 
 ---
-### 10. Deploy to Cloudflare Pages
+### 11. Deploy to Cloudflare Pages
 Deploys the contents of ``dist`` using ``cloudflare/pages-action@v1``.
 
 ### After initial setup, all WeWeb exports automatically propagate to Cloudflare Pages without manual intervention.
