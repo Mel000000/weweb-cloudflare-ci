@@ -485,7 +485,6 @@ Deploys the contents of ``dist`` using ``cloudflare/pages-action@v1``.
 |-------|--------------|----------|
 | Workflow not triggering | Worker not deployed or WRONG `WORKER_PAT` | Check worker deployment and verify PAT permissions |
 | Clone failing | `WORKFLOW_PAT` missing or incorrect | Ensure PAT has `repo` scope |
-| Build failing | Missing Vite config | Verify `vite.override.js` exists |
 | Deployment failing | Cloudflare token invalid | Check `CLOUDFLARE_API_TOKEN` permissions |
 
 ---
